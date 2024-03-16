@@ -186,9 +186,19 @@ createTable() {
                     fi
                 fi
         fi
-        local column_datatype
-        read -p "Enter data type of column $column_name [integer/string] :" column_datatype
-       
+
+         local valid_column_datatype=false
+	while [ "$valid_column_datatype" == false ]; do
+            local column_datatype
+            read -p "Enter data type of column $column_name [integer/string]: " column_datatype
+
+            if [[ "$column_datatype" =~ ^[iI][nN][tT][eE][gG][eE][rR]$ || "$column_datatype" =~ ^[iI][nN][tT]$ || "$column_datatype" =~ ^[sS][tT][rR][iI][nN][gG]$ ]]; then
+                valid_column_datatype=true
+            else
+                echo "Invalid data type. Please enter 'integer' , 'int' or 'string' only."
+            fi
+        done
+
         mycolumns[$i]="$column_name:$set_primary_key:$column_datatype"
         set_primary_key=0
    done
