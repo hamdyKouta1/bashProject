@@ -102,7 +102,7 @@ connectDB() {
         cd "$dbname"
         echo "Connected To DB: $dbname ."
         openConnection
-        break
+        
     else
         echo "$dbname not found."
     fi
@@ -120,7 +120,7 @@ openConnection() {
             6) deletefromTable ;;
             7) deleteTable ;;
             8) selectFromTable ;;
-            9) backToMain; break ;;
+            9) backToMain; return 1 ;;
             *) echo "Invalid input" ;;
         esac
     
@@ -150,6 +150,34 @@ fi
 
 }
 
+deleteTable() {
+    read -p "Please enter Table Name you want to delete: " del_tname
+
+    if [ ! -e "${del_tname}_data.table" ]; then
+        echo "Table '$del_tname' not found."
+        return;
+	else
+	echo "Are you sure you want to delete "$del_tname"? [Y/N]"
+	read resp
+
+        case $resp in
+        [Yy]*)
+            rm -r "${del_tname}_data.table"
+            rm -r "${del_tname}_metadata"
+            if [ $? -eq 0 ]; then
+                echo "Table '$del_tname' deleted successfully."
+            else
+                echo "Failed to delete Table '$del_tname'. Please check permissions."
+            fi;;
+
+        [Nn]*)
+
+             return;;
+        *)
+        echo "Invalid response";;
+        esac
+fi
+}
 
 createTable() {
     read -p "Please enter your Table Name: " tableName
@@ -186,19 +214,18 @@ createTable() {
                     fi
                 fi
         fi
-
+       
          local valid_column_datatype=false
 	while [ "$valid_column_datatype" == false ]; do
             local column_datatype
             read -p "Enter data type of column $column_name [integer/string]: " column_datatype
 
-            if [[ "$column_datatype" =~ ^[iI][nN][tT][eE][gG][eE][rR]$ || "$column_datatype" =~ ^[iI][nN][tT]$ || "$column_datatype" =~ ^[sS][tT][rR][iI][nN][gG]$ ]]; then
+            if [[ "$column_datatype" =~ ^[iI][nN][tT][eE][gG][eE][rR]$  || "$column_datatype" =~ ^[sS][tT][rR][iI][nN][gG]$ ]]; then
                 valid_column_datatype=true
             else
-                echo "Invalid data type. Please enter 'integer' , 'int' or 'string' only."
+                echo "Invalid data type. Please enter 'integer' or 'string' only."
             fi
         done
-
         mycolumns[$i]="$column_name:$set_primary_key:$column_datatype"
         set_primary_key=0
    done
@@ -609,6 +636,7 @@ exitDBMS(){
     echo "disconnected"
 }
 
+
 if [ -d "$db_c" ]; then
     cd "$db_c"
 else
@@ -617,13 +645,22 @@ else
 fi
 
 
+
 select name in Create_DB List_All_DBs Connect_DB Delete_DB Exit; do
     case $REPLY in
         1) createDB ;;
         2) listDB ;;
         3) connectDB ;;
         4) deleteDB ;;
-        5) exitDBMS; break ;;
+        5) exitDBMS; return 1 ;;
         *) echo "Invalid input" ;;
     esac
 done
+
+
+
+
+
+
+
+

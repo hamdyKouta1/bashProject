@@ -1,0 +1,4 @@
+Table name: test
+id:1:integer
+name:0:string
+phone:0:integer
