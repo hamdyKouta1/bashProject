@@ -1,72 +1,84 @@
 #!/bin/bash
  db_c="DBContainer"
-
-createDB() {
-local flag=0
-echo "Creating New DataBase"
-echo "Type 'Cancel' to Cancel The Process" 
 pattern="^(cancel|Cancel|CANCEL)$"
 
-while true; do
-    local new_db_name
-    read -p "Please enter your DB Name: " new_db_name
-    if [ -d "$new_db_name" ]
-	then
-		 echo "Database already exists."
-		 flag=1
-	elif [ -z $new_db_name ]
-	then 
-		echo " can't create a database with no name."
-	elif [[ ! "$new_db_name" =~ ^[a-zA-Z][a-zA-Z0-9_]*$ ]]; then
-    		echo "Invalid database name."
-		echo " The name must start with a letter and can contain only letters, numbers, and underscores."
+#######################################################################################################################
 
-	elif [[ "$new_db_name" =~ $pattern ]]; then
-    	echo "canceled"
-        break
+createDB() {
+    local flag=0
+    echo "Creating New DataBase"
+    echo "Type 'Cancel' to Cancel The Process" 
+    pattern="^(cancel|Cancel|CANCEL)$"
 
-	else
-	mkdir "$new_db_name"
-	if [ $? -eq 0 ]; then
-		echo "Database '$new_db_name' created Successfully"
-		echo "Do you want to connect to this database ?[Y/N]"
-        	read response
+    while true; do
+        local new_dbname
+        read -p "Please enter your DB Name: " new_dbname
+        if [ -d "$new_dbname" ]
+        then
+            echo "Database already exists."
+            flag=1
+        elif [ -z $new_dbname ]
+        then 
+            echo " can't create a database with no name."
+        elif [[ ! "$new_dbname" =~ ^[a-zA-Z][a-zA-Z0-9_]*$ ]]; then
+                echo "Invalid database name."
+            echo " The name must start with a letter and can contain only letters, numbers, and underscores."
 
-        	case $response in
-        	[Yy]*)
-        	cd "$PWD/$new_db_name"
-            openConnection
-            ;;
+        elif [[ "$new_dbname" =~ $pattern ]]; then
+            echo "canceled"
+            break
 
-        	[Nn]*)
-	    	echo "Database '$new_db_name' created Successfully Type 2 to list your DBs"
-        	return 0;;
-        	*)
-        	echo "Invalid response"
-        	esac
-		break;
-	 else
-                echo "Failed to create database '$new_db_name'."
-         fi
-   fi
-done
+        else
+        mkdir "$new_dbname"
+        if [ $? -eq 0 ]; then
+            echo "Database '$new_dbname' created Successfully"
+            echo "Do you want to connect to this database ?[Y/N]"
+                read response
+
+                case $response in
+                [Yy]*)
+                cd "$PWD/$new_dbname"
+                openConnection
+                ;;
+
+                [Nn]*)
+                echo "Database '$new_dbname' created Successfully Type 2 to list your DBs"
+                return 0;;
+                *)
+                echo "Invalid response"
+                esac
+            break;
+        else
+                    echo "Failed to create database '$new_dbname'."
+            fi
+    fi
+    done
 }
+
+#######################################################################################################################
 
 listDB() {
    
-local output=$(ls -F |grep /)
+    local output=$(ls -F |grep /)
 
-if [ -z "$output" ]; then
-  echo "No DBS Are Found"
-else
-  echo "$output"
-fi
+    if [ -z "$output" ]; then
+    echo "No DBS Are Found"
+    else
+    echo "$output"
+    fi
 
 }
+
+#######################################################################################################################
 
 deleteDB() {
     read -p "Please enter DB Name you want to delete: " del_dbname
 
+    if [[ "$del_dbname" =~ $pattern ]]; then
+            echo "canceled"
+            return
+    fi
+    
     if [ ! -d "$del_dbname" ]; then
         echo "Database '$del_dbname' not found."
         return;
@@ -89,85 +101,130 @@ deleteDB() {
         *)
         echo "Invalid response";;
         esac
-fi
-}
-
-connectDB() {
-    read -p "Please enter DB Name to connect: " dbname
-    local folderArray
-    local flag=0
-
-    if [ -d "$dbname" ]; then 
-        flag=1
-        cd "$dbname"
-        echo "Connected To DB: $dbname ."
-        openConnection
-        
-    else
-        echo "$dbname not found."
     fi
 }
 
+#######################################################################################################################
+
+connectDB() {
+    read -p "Please enter DB Name to connect: " Connect_dbname
+    local folderArray
+    local flag=0
+
+      if [[ "$Connect_dbname" =~ $pattern ]]; then
+            echo "canceled"
+            return
+    fi
+
+    if [ -d "$Connect_dbname" ]; then 
+        flag=1
+        cd "$Connect_dbname"
+        echo "Connected To DB: $Connect_dbname ."
+        openConnection
+        
+    else
+        echo "$Connect_dbname not found."
+    fi
+
+}
+
+#######################################################################################################################
+
+exitDBMS(){
+    cd ..
+    echo "disconnected"
+}
+
+
+#######################################################################################################################
+################################################# Table Functions #####################################################
+#######################################################################################################################
+
+
 openConnection() {
-    
+    echo ""
+    echo "###############################################"
+
     select name in View_MetaData_Of_Table List_All_Table Create_Table Insert_Into_Table Update_Into_Table Delete_From_Table Delete_Table Select_From_Table Back; do
         case $REPLY in
             1) viewTable ;;
             2) listAllTable ;;
             3) createTable ;;
-            4) insertInTable ;;
-            5) updateTable ;;
-            6) deletefromTable ;;
+            4) insertIntoTable;;
+            5) updateIntoTable ;;
+            6) deleteFromTable ;;
             7) deleteTable ;;
             8) selectFromTable ;;
-            9) backToMain; return 1 ;;
+            9) backToMain; return 0  ;;
             *) echo "Invalid input" ;;
         esac
     
     done
+
+
 }
 
+#######################################################################################################################
+
 viewTable() {
-    local tbName
-    read -p "Please enter name of table : " tbName
-    if [ -e "${tbName}_data.table" ]; then
-    cat "${tbName}_metadata"
+    local table_name
+    read -p "Please enter name of table : " table_name
+    
+    if [[ "$table_name" =~ $pattern ]]; then
+            echo "canceled"
+            return
+    fi
+
+    if [ -e "${table_name}_data.table" ]; then
+    cat "${table_name}_metadata"
     else
     echo "not found"
     fi
        
 }
 
-listAllTable() {
-   
-local output=$(ls -F | grep '.table')
+#######################################################################################################################
 
-if [ -z "$output" ]; then
-  echo "No Tables Are Found"
-else
-  echo "$output"
-fi
+listAllTable() {
+    
+    local output=$(ls -F | grep '.table')
+
+    if [ -z "$output" ]; then
+    echo "No Tables Are Found"
+    else
+    echo "$output"
+    fi
 
 }
 
-deleteTable() {
-    read -p "Please enter Table Name you want to delete: " del_tname
+#######################################################################################################################
 
-    if [ ! -e "${del_tname}_data.table" ]; then
-        echo "Table '$del_tname' not found."
+deleteTable() {
+    read -p "Please enter Table Name you want to delete: " del_table_name
+pattern="^(cancel|Cancel|CANCEL)$"
+
+    if [[ "$del_table_name" =~ $pattern ]]; then
+            echo "canceled"
+            return
+    fi
+
+    if [ ! -e "${del_table_name}_data.table" ]; then
+        echo "Table '$del_table_name' not found."
         return;
+
+    
 	else
-	echo "Are you sure you want to delete "$del_tname"? [Y/N]"
+	echo "Are you sure you want to delete "$del_table_name"? [Y/N]"
 	read resp
 
         case $resp in
         [Yy]*)
-            rm -r "${del_tname}_data.table"
-            rm -r "${del_tname}_metadata"
+            rm -r "${del_table_name}_data.table"
+            rm -r "${del_table_name}_metadata"
             if [ $? -eq 0 ]; then
-                echo "Table '$del_tname' deleted successfully."
+                echo "Table '$del_table_name' deleted successfully."
             else
-                echo "Failed to delete Table '$del_tname'. Please check permissions."
+                echo "Failed to delete Table '$del_table_name'. Please check permissions."
             fi;;
 
         [Nn]*)
@@ -176,14 +233,25 @@ deleteTable() {
         *)
         echo "Invalid response";;
         esac
-fi
+    fi
 }
 
-createTable() {
-    read -p "Please enter your Table Name: " tableName
+#######################################################################################################################
 
-    if [ -e "${tableName}_data.table" ]; then
+createTable() {
+    read -p "Please enter your Table Name: " create_table
+
+    if [ -e "${create_table}_data.table" ]; then
         echo "Error: A table with the same name already exists."
+        return 1
+
+    elif [[ "$create_table" =~ $pattern ]]; then
+            echo "canceled"
+            return 1
+
+    elif [[ ! "$create_table" =~ ^[a-zA-Z][a-zA-Z0-9_]*$ ]]; then
+        echo "Invalid table name."
+        echo " The name must start with a letter and can contain only letters, numbers, and underscores."
         return 1
     fi
 
@@ -197,9 +265,18 @@ createTable() {
 
     for((i=0; i<columns ; i++));
     do 
-        
+    local valid_column_name=false
+
+	while [ "$valid_column_name" == false ]; do
        local column_name
        read -p "Please enter name of column $((i+1)) : " column_name
+        if [[  "$column_name" =~ ^[a-zA-Z][a-zA-Z0-9_]*$ ]]; then
+            valid_column_name=true
+        else 
+            echo "Invalid column name."
+            echo " The name must start with a letter and can contain only letters, numbers, and underscores."
+        fi
+    done
        
        local primary_key_response
 
@@ -230,25 +307,24 @@ createTable() {
         set_primary_key=0
    done
    
-   echo "Table name: $tableName" >> "${tableName}_metadata"
+   echo "Table name: $create_table" >> "${create_table_name}_metadata"
 
    for column_info in "${mycolumns[@]}"; do
     echo "$column_info"
-        echo "$column_info" >> "${tableName}_metadata"
+        echo "$column_info" >> "${create_table}_metadata"
    done
 
-   touch "${tableName}_data.table"
+   touch "${create_table}_data.table"
    echo "${mycolumns[@]}"
-   echo "Table '$tableName' created successfully."
+   echo "Table '$create_table' created successfully."
 
    unset mycolumns
    
 }
 
+#######################################################################################################################
 
-
-
-insertInTable() {
+insertIntoTable() {
 
     local table_name
     read -p "Enter your table name: " table_name
@@ -256,15 +332,21 @@ insertInTable() {
     local metadata_file="${table_name}_metadata"
 
     local data_file="${table_name}_data.table"
-
+    
+    if [[ "$table_name" =~ $pattern ]]; then
+            echo "canceled"
+            return 1
+    
+    fi
+    
     if [ ! -f "$metadata_file" ]; then
         echo "Error: Table '$table_name' does not exist."
         return 1
+    
     fi
 
     local columns=()
 
-    local skip=true
 
     get_pk=$(awk -F ':' '$2=="1"{print $1}' "${table_name}_metadata")
     get_pk_nr=$(awk -F ':' '$2=="1"{print NR}' "${table_name}_metadata")
@@ -331,24 +413,30 @@ insertInTable() {
 
 
 
-unset  columns_names_arr
-unset  columns_types_arr
+    unset  columns_names_arr
+    unset  columns_types_arr
    
     echo "Data inserted successfully into table '$table_name'."
 }
 
+#######################################################################################################################
 
-
-
-
-updateTable() {
+updateIntoTable() {
     read -p "Enter your table name: " table_name
     metadata_file="${table_name}_metadata"
     data_file="${table_name}_data.table"
 
+    if [[ "$table_name" =~ $pattern ]]; then
+            echo "canceled"
+            return 1
+    
+    fi
+
+
     if [ ! -f "$metadata_file" ]; then
         echo "Error: Table '$table_name' does not exist."
         return 1
+        
     fi
 
     get_pk=$(awk -F ':' '$2=="1"{print $1}' "$metadata_file")
@@ -427,10 +515,9 @@ updateTable() {
 }
 
 
+#######################################################################################################################
 
-
-
-deletefromTable(){
+deleteFromTable(){
 
     local table_name
     read -p "Enter your table name: " table_name
@@ -439,9 +526,16 @@ deletefromTable(){
 
     local data_file="${table_name}_data.table"
 
+    if [[ "$table_name" =~ $pattern ]]; then
+            echo "canceled"
+            return 1
+    
+    fi
+
     if [ ! -f "$metadata_file" ]; then
         echo "Error: Table '$table_name' does not exist."
         return 1
+
     fi
 
     local columns=()
@@ -506,6 +600,8 @@ deletefromTable(){
        
 }
 
+#######################################################################################################################
+
 
 selectFromTable() {
    select name in Select_All_Table Select_With_Column_Name Select_With_Condition Cancel; do
@@ -517,7 +613,7 @@ selectFromTable() {
         *) echo "Invalid input" ;;
 
     esac
-done 
+    done 
 }
 
 selectAllTable(){
@@ -627,25 +723,18 @@ selectWithCondition() {
     fi
 }
 
+######################################################################################################################
+
 backToMain() {
     cd ..
     echo "back to main menu"
 }
-exitDBMS(){
-    cd ..
-    echo "disconnected"
-}
-
-
-if [ -d "$db_c" ]; then
-    cd "$db_c"
-else
-    mkdir "$db_c"
-    cd "$db_c"
-fi
 
 
 
+#######################################################################################################################
+
+startDBMS(){
 select name in Create_DB List_All_DBs Connect_DB Delete_DB Exit; do
     case $REPLY in
         1) createDB ;;
@@ -656,7 +745,19 @@ select name in Create_DB List_All_DBs Connect_DB Delete_DB Exit; do
         *) echo "Invalid input" ;;
     esac
 done
+}
 
+#######################################################################################################################
+
+
+if [ -d "$db_c" ]; then
+    cd "$db_c"
+else
+    mkdir "$db_c"
+    cd "$db_c"
+fi
+
+startDBMS
 
 
 
