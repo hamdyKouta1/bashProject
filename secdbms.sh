@@ -309,7 +309,7 @@ createTable() {
         set_primary_key=0
    done
    
-   echo "Table name: $create_table" >> "${create_table_name}_metadata"
+   echo "Table name: $create_table" >> "${create_table}_metadata"
 
    for column_info in "${mycolumns[@]}"; do
     echo "$column_info"
