@@ -203,7 +203,7 @@ listAllTable() {
 
 deleteTable() {
     read -p "Please enter Table Name you want to delete: " del_table_name
-pattern="^(cancel|Cancel|CANCEL)$"
+ pattern="^(cancel|Cancel|CANCEL)$"
 
     if [[ "$del_table_name" =~ $pattern ]]; then
             echo "canceled"
@@ -309,6 +309,27 @@ createTable() {
         set_primary_key=0
    done
    
+   if [[ "$i" == "${columns-1}" ]] && [[ "$flag_pk" == 0 ]]; then
+    echo "no pk is detected"
+    echo "auto first column will be pk"
+
+
+    first_rec="${mycolumns[0]}"
+
+    IFS=':' read -r field1 field2 field3 <<< "$first_rec"
+
+    field2=1
+
+    add_pk_to_first_rec="$field1:"$field2":$field3"
+
+    mycolumns[0]="$add_pk_to_first_rec"
+
+    printf '%s\n' "${mycolumns[@]}"
+
+
+  fi
+
+
    echo "Table name: $create_table" >> "${create_table}_metadata"
 
    for column_info in "${mycolumns[@]}"; do
@@ -440,80 +461,84 @@ updateIntoTable() {
         return 1
         
     fi
-
+    get_pk="-1"
     get_pk=$(awk -F ':' '$2=="1"{print $1}' "$metadata_file")
     pk_nr=$(awk -F ':' '$2=="1"{print NR-1}' "$metadata_file")
     columns_names_arr=($(awk -F ':' 'NR!=1{print $1}' "$metadata_file"))
     columns_types_arr=($(awk -F ':' 'NR!=1{print $3}' "$metadata_file"))
+    if [[ ${get_pk} != "-1" ]]; then
+        echo "Primary key: $get_pk (field no. $pk_nr)"
+        echo "Columns: ${columns_names_arr[@]}"
+        echo "Column types: ${columns_types_arr[@]}"
+        echo "Column types: ${columns_types_arr[$((pk_nr-1))]}"
 
-    echo "Primary key: $get_pk (field no. $pk_nr)"
-    echo "Columns: ${columns_names_arr[@]}"
-    echo "Column types: ${columns_types_arr[@]}"
-    echo "Column types: ${columns_types_arr[$((pk_nr-1))]}"
-
-    read -p "Enter value of $get_pk to update: " target_record
-    while true; do 
-        if [[ ${columns_types_arr[pk_nr-1]} == "integer" ]] && [[ "$target_record" =~ ^[0-9]+$ ]]; then
-            break    
-        elif [[ ${columns_types_arr[pk_nr-1]} == "string" ]] && [[ "$target_record" =~ ^[a-zA-Z0-9]+$ ]]; then
-            break
-        else
-            echo "Invalid input. Must match the primary key data type."
-            read -p "Enter value of $get_pk to update: " target_record
-        fi
-    done
-
-    while true; do    
-        read -p "Enter column name to update: " target_field
-        if [[ " ${columns_names_arr[@]} " =~ " $target_field " ]] ; then
-            if [[ " ${get_pk} " != " $target_field " ]]; then
-            break
+        read -p "Enter value of $get_pk to update: " target_record
+        while true; do 
+            if [[ ${columns_types_arr[pk_nr-1]} == "integer" ]] && [[ "$target_record" =~ ^[0-9]+$ ]]; then
+                break    
+            elif [[ ${columns_types_arr[pk_nr-1]} == "string" ]] && [[ "$target_record" =~ ^[a-zA-Z0-9]+$ ]]; then
+                break
             else
-            echo "It's Not Allowed To Update PK column"
+                echo "Invalid input. Must match the primary key data type."
+                read -p "Enter value of $get_pk to update: " target_record
             fi
-        else
-            echo "Target field not found. Please try again."
+        done
+
+        while true; do    
+            read -p "Enter column name to update: " target_field
+            if [[ " ${columns_names_arr[@]} " =~ " $target_field " ]] ; then
+                if [[ " ${get_pk} " != " $target_field " ]]; then
+                break
+                else
+                echo "It's Not Allowed To Update PK column"
+                fi
+            else
+                echo "Target field not found. Please try again."
+            fi
+        done
+
+        for ((i=0; i<${#columns_names_arr[@]}; i++)); do
+            if [[ "${columns_names_arr[i]}" == "$target_field" ]]; then
+                update_index=$i
+                break
+            fi
+        done
+
+        read -p "Enter new value for $target_field: " updated_value
+        if [[ ${columns_types_arr[update_index]} == "integer" ]] && [[ ! "$updated_value" =~ ^[0-9]+$ ]]; then
+            echo "Invalid input for integer type column."
+            return 1
+        elif [[ ${columns_types_arr[update_index]} == "string" ]] && [[ ! "$updated_value" =~ ^[a-zA-Z0-9]+$ ]]; then
+            echo "Invalid input for string type column."
+            return 1
         fi
-    done
 
-    for ((i=0; i<${#columns_names_arr[@]}; i++)); do
-        if [[ "${columns_names_arr[i]}" == "$target_field" ]]; then
-            update_index=$i
-            break
+
+
+    res=$(awk -F ':' -v field="$pk_nr" -v val="$target_record" '
+            BEGIN { OFS=":"; IFS=":" }
+            $field == val { found=1 }
+            END { print found }
+        ' "${table_name}_data.table")
+
+            if [ -n "$res" ] && [ "$res" -eq 1 ]; then
+
+    
+        awk -F ':' -v field="$pk_nr" -v val="$target_record" -v updatec=$((update_index+1)) -v updated_value="$updated_value" '
+            BEGIN { OFS=":"; IFS=":" }
+            $field == val { $updatec = updated_value; }
+            { print }
+        ' "$data_file" > "${data_file}.tmp" && mv "${data_file}.tmp" "$data_file"
+
+        echo "Record updated successfully."
+        else 
+            echo "Record is not found."
+
         fi
-    done
+else
+    echo "test"
 
-    read -p "Enter new value for $target_field: " updated_value
-    if [[ ${columns_types_arr[update_index]} == "integer" ]] && [[ ! "$updated_value" =~ ^[0-9]+$ ]]; then
-        echo "Invalid input for integer type column."
-        return 1
-    elif [[ ${columns_types_arr[update_index]} == "string" ]] && [[ ! "$updated_value" =~ ^[a-zA-Z0-9]+$ ]]; then
-        echo "Invalid input for string type column."
-        return 1
-    fi
-
-
-
- res=$(awk -F ':' -v field="$pk_nr" -v val="$target_record" '
-        BEGIN { OFS=":"; IFS=":" }
-        $field == val { found=1 }
-        END { print found }
-    ' "${table_name}_data.table")
-
-        if [ -n "$res" ] && [ "$res" -eq 1 ]; then
-
-   
-    awk -F ':' -v field="$pk_nr" -v val="$target_record" -v updatec=$((update_index+1)) -v updated_value="$updated_value" '
-        BEGIN { OFS=":"; IFS=":" }
-        $field == val { $updatec = updated_value; }
-        { print }
-    ' "$data_file" > "${data_file}.tmp" && mv "${data_file}.tmp" "$data_file"
-
-    echo "Record updated successfully."
-    else 
-        echo "Record is not found."
-
-    fi
+fi
 }
 
 
