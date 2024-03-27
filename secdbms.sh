@@ -636,7 +636,7 @@ selectFromTable() {
         1) selectAllTable ;;
         2) selectWithColumnName ;;
         3) selectWithCondition ;;
-        4) openConnection ;;
+        4) echo "back to main"; return ;;
         *) echo "Invalid input" ;;
 
     esac
